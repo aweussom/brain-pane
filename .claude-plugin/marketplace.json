@@ -1,0 +1,11 @@
+{
+  "name": "brain-pane",
+  "owner": { "name": "Tommy Leonhardsen" },
+  "plugins": [
+    {
+      "name": "brain-pane",
+      "source": "./",
+      "description": "A pane over brain/next, brain/todo and STATUS.md: buckets, items, ages from git. ls with pixels; nothing is written."
+    }
+  ]
+}

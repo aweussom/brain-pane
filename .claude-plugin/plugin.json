@@ -1,0 +1,6 @@
+{
+  "name": "brain-pane",
+  "version": "0.1.0",
+  "description": "A pane over brain/next, brain/todo and STATUS.md: buckets, items, ages from git. ls with pixels; nothing is written.",
+  "types": "./types/index.d.ts"
+}
