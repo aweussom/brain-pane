@@ -2,13 +2,14 @@
 #
 # Does two things:
 #   1. claude plugin install brain-pane --marketplace <owner>/brain-pane
-#      (adds the marketplace on first run, installs at user scope)
+#      (adds the marketplace on first run, installs at user scope; the
+#      https URL so a machine without an SSH key for GitHub still clones)
 #   2. sets "tui": "fullscreen" in ~/.claude/settings.json, because the
 #      inline layout cuts the pane to a few rows.
 # Re-running is safe. It writes nothing else.
 
 $ErrorActionPreference = 'Stop'
-$Marketplace = 'aweussom/brain-pane'
+$Marketplace = 'https://github.com/aweussom/brain-pane.git'   # https: a public clone needs no SSH key
 
 function Need($name, $hint) {
     if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
