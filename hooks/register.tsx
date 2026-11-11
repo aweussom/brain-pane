@@ -54,6 +54,7 @@ const LAYOUT_REMINDER =
 
 const EMPTY: BrainSnapshot = {
   scannedAt: 0,
+  cwd: '',
   statusDate: '',
   statusHeadline: '',
   proposedCount: 0,
@@ -64,11 +65,24 @@ const EMPTY: BrainSnapshot = {
 const snapshot = atom({ plugin: 'brain-pane', key: 'snapshot' } as const, EMPTY)
 
 /**
+ * The file:// URL of a repo-relative path, for the item's Link.
+ * Why: Windows Terminal opens a file:/// URL on ctrl+click and ignores a bare
+ * path. A Windows cwd (C:\repo) needs the third slash; a POSIX one brings its own.
+ */
+function fileUrl(cwd: string, path: string): string {
+  const absolute = `${cwd.replaceAll('\\', '/')}/${path}`
+  const encoded = encodeURI(absolute)
+  if (encoded.startsWith('/')) return `file://${encoded}`
+  return `file:///${encoded}`
+}
+
+/**
  * Reads brain/ and STATUS.md into one snapshot. Age is `git log -1 --format=%as`
  * per item, as the triage skill computes it; an uncommitted item has no age.
  */
 async function scan($: EngineInterface): Promise<BrainSnapshot> {
   const today = await $.clock.now()
+  const cwd = await $.session.cwd()
   const items: BrainItem[] = []
 
   for (const bucket of BUCKETS) {
@@ -92,7 +106,7 @@ async function scan($: EngineInterface): Promise<BrainSnapshot> {
         const committedAt = Date.parse(dateText)
         ageDays = Math.floor((today - committedAt) / 86_400_000)
       }
-      items.push({ bucket, id: `${letter}-${number}`, cost, slug, ageDays })
+      items.push({ bucket, id: `${letter}-${number}`, cost, slug, path, ageDays })
     }
   }
 
@@ -112,7 +126,7 @@ async function scan($: EngineInterface): Promise<BrainSnapshot> {
     statusHeadline = bold?.[1] ?? text.split('\n')[0] ?? ''
   }
 
-  return { scannedAt: today, statusDate, statusHeadline, proposedCount, items, error: '' }
+  return { scannedAt: today, cwd, statusDate, statusHeadline, proposedCount, items, error: '' }
 }
 
 export const register: Register = on => {
@@ -176,7 +190,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Link, Text } = $.ui.resolve(e)
     const snap = await read($, snapshot)
     const width = Math.max(30, e.props.bodyColumns ?? e.viewport?.columns ?? 80)
 
@@ -222,7 +236,7 @@ export const register: Register = on => {
           )
           // One line per item: id, cost, the slug cut to the room with ...; age is the colour.
           // Past the bucket's own limit (1-now 14 d, doing 7 d) the line is red and bold.
-          // A reminder of what waits, not the item; the markdown is one open away.
+          // A reminder of what waits, not the item; the line is a link to the markdown.
           return (
             <Box flexDirection="column" key={bucket}>
               {header}
@@ -233,12 +247,26 @@ export const register: Register = on => {
                 const room = width - 2 - item.id.length - 1 - item.cost.length - 1
                 const isCut = words.length > room
                 const shown = isCut ? words.slice(0, Math.max(0, room - 3)).trimEnd() + '...' : words
+                // A snapshot kept from before the reload has no cwd or path; plain until the rescan.
+                const hasTarget = snap.cwd !== undefined && snap.cwd !== '' && item.path !== undefined
+                if (!hasTarget) {
+                  return (
+                    <Text key={item.id} wrap="truncate-end" color={color} bold={isOverLimit}>
+                      {'  '}
+                      {item.id}
+                      <Text dimColor> {item.cost} </Text>
+                      {shown}
+                    </Text>
+                  )
+                }
                 return (
                   <Text key={item.id} wrap="truncate-end" color={color} bold={isOverLimit}>
                     {'  '}
-                    {item.id}
-                    <Text dimColor> {item.cost} </Text>
-                    {shown}
+                    <Link href={fileUrl(snap.cwd, item.path)}>
+                      {item.id}
+                      <Text dimColor> {item.cost} </Text>
+                      {shown}
+                    </Link>
                   </Text>
                 )
               })}

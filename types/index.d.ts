@@ -3,11 +3,13 @@ export type BrainItem = {
   id: string
   cost: string
   slug: string
+  path: string
   ageDays: number | null
 }
 
 export type BrainSnapshot = {
   scannedAt: number
+  cwd: string
   statusDate: string
   statusHeadline: string
   proposedCount: number
